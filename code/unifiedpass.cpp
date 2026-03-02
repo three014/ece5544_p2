@@ -39,17 +39,6 @@ std::string getShortValueName(const Value *V) {
   return S;
 }
 
-enum class Direction { Forward, Backward };
-
-template <typename P>
-struct UnifiedPass : PassInfoMixin<UnifiedPass<P>> {
-  PreservedAnalyses run(Function &F, FunctionAnalysisManager &) {
-    
-  }
-
-};
-
-
 // -------------------- Available Expressions (starter) --------------------
 
 struct Expr {
