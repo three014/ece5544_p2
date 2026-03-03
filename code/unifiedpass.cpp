@@ -100,12 +100,19 @@ struct AvailablePass : PassInfoMixin<AvailablePass> {
     BitVector kill;
   };
 
-  static BitVector meetIntersect(const std::vector<BitVector> &ins) {
+  static BitVector meet(const std::vector<BitVector> &ins) {
     if (ins.empty())
       return {};
     BitVector out = ins[0];
     for (size_t i = 1; i < ins.size(); ++i)
       out &= ins[i];
+    return out;
+  }
+
+  static BitVector transfer(const BitVector &in, const BitVector &gen, const BitVector &kill) {
+    BitVector out = in;
+    out.reset(kill);
+    out |= gen;
     return out;
   }
 
@@ -122,8 +129,6 @@ struct AvailablePass : PassInfoMixin<AvailablePass> {
           universe.push_back(Expr::fromBO(*BO));
       }
     }
-
-    F.print(outs());
 
     // Remove redundant expressions
     std::sort(universe.begin(), universe.end());
@@ -191,14 +196,9 @@ struct AvailablePass : PassInfoMixin<AvailablePass> {
         if (predOuts.empty())
           predOuts.push_back(BitVector(universe.size(), false));
 
-        st[BB].in = meetIntersect(predOuts);
+        st[BB].in = meet(predOuts);
 
-        // TODO(student): implement transfer OUT = GEN U (IN - KILL).
-        // DONE?
-        BitVector newOut = st[BB].in;
-        newOut.reset(st[BB].kill);
-        newOut |= st[BB].gen;
-
+        BitVector newOut = transfer(st[BB].in, st[BB].gen, st[BB].kill);
         if (newOut != st[BB].out) {
           st[BB].out = newOut;
           changed = true;
@@ -222,12 +222,72 @@ struct AvailablePass : PassInfoMixin<AvailablePass> {
 // -------------------- Liveness/Reaching (stubs) --------------------
 
 struct LivenessPass : PassInfoMixin<LivenessPass> {
+  struct BlockState {
+    BitVector in;
+    BitVector out;
+    BitVector use;
+    BitVector def;
+  };
+
+  static BitVector top(const std::vector<Value *> &domain) {
+    return BitVector(domain.size(), true);
+  }
+
+  static BitVector bottom(const std::vector<Value *> &domain) {
+    return BitVector(domain.size(), false);
+  }
+
   PreservedAnalyses run(Function &F, FunctionAnalysisManager &) {
     outs() << "=== ";
     F.printAsOperand(outs(), false);
     outs() << " ===\n";
     outs() << "[starter] liveness: implement backward dataflow (use/def, "
               "IN/OUT)\n";
+
+    // Domain: Set of variables
+    std::vector<Value *> domain;
+    for (auto &BB : F) {
+      for (auto &I : BB) {
+        if (isa<BinaryOperator>(&I)) {
+          domain.push_back(&I);
+        }
+      }
+    }
+
+    // Remove redundant expressions
+    std::sort(domain.begin(), domain.end());
+    domain.erase(std::unique(domain.begin(), domain.end()),
+                   domain.end());
+
+    std::vector<BasicBlock *> order;
+    for (BasicBlock &BB : F) {
+      // Rationale: BBs that lead outside the function
+      // won't have any successors, so they'll have an
+      // empty list, and that's where we'll want to start.
+      //
+      // Unless their successors will just continue into the
+      // next function, in which case this won't work.
+      if (successors(&BB).empty()) {
+        order.push_back(&BB);
+      }
+    }
+
+    // Find predecessors of the blocks in the list, and add
+    // them to the list if they're not already there.
+    for (size_t i = 0; i < order.size(); i++) {
+      for (BasicBlock *pred : predecessors(order[i])) {
+        if (std::find(order.begin(), order.end(), pred) == order.end()) {
+          order.push_back(pred);
+        }
+      }
+    }
+
+    // Intialize state
+    for (BasicBlock *BB: order) {
+      BlockState bs;
+    }
+
+    
     return PreservedAnalyses::all();
   }
 };
