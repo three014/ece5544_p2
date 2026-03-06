@@ -1,10 +1,10 @@
-# Assignment 2 Starter Code
+# Assignment 2
 
-This starter package contains:
-- `unifiedpass.cpp`: LLVM plugin starter with
-  - reusable fixed-point dataflow engine skeleton
+This package contains:
+- `unifiedpass.cpp`: LLVM plugin with
+  - reusable fixed-point dataflow engine
   - set-print helper utilities
-  - a partially wired Available Expressions template (with TODO transfer logic)
+  - bitvector-based Available Expressions, Liveness, and Reaching Definitions passes
   - a map-based Constant Propagation starter using a 3-point lattice
     (`TOP`, `Const`, `NAC`) with TODO extension points
   - pass registration for
